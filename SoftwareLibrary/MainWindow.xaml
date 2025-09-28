@@ -1,0 +1,274 @@
+﻿<Window x:Class="SoftwareLibrary.MainWindow"
+        x:Name="RootWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SoftwareLibrary"
+        xmlns:vm="clr-namespace:SoftwareLibrary.ViewModels"
+        xmlns:conv="clr-namespace:SoftwareLibrary.Converters"
+        mc:Ignorable="d"
+        Title="Software Library" Height="900" Width="1400" MinWidth="1200" MinHeight="720">
+
+    <Window.Resources>
+        <conv:NullToBoolConverter x:Key="NullToBool" />
+        <conv:StringToImageConverter x:Key="StringToImage" />
+        <conv:SelectedItemBorderConverter x:Key="SelectedBorder" />
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <Style x:Key="TileStyle" TargetType="Border">
+            <Setter Property="Width" Value="200"/>
+            <Setter Property="Height" Value="220"/>
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Background" Value="#FFF"/>
+            <Setter Property="BorderBrush" Value="#DDD"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="6" Opacity="0.08"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Run button hover animation -->
+        <Style x:Key="RunButtonHoverStyle" TargetType="Button">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <TranslateTransform X="20" />
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True">
+                    <DataTrigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.18" />
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)" To="0" Duration="0:0:0.18" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.EnterActions>
+                    <DataTrigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.18" />
+                                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)" To="20" Duration="0:0:0.18" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.ExitActions>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- DataTemplate for SoftwareItem -->
+        <DataTemplate x:Key="SoftwareTileTemplate" DataType="local:SoftwareItem">
+            <Border Style="{StaticResource TileStyle}" Cursor="Hand" ToolTip="{Binding Title}" MouseLeftButtonDown="Tile_MouseDown">
+                <Border.BorderBrush>
+                    <MultiBinding Converter="{StaticResource SelectedBorder}">
+                        <!-- current item -->
+                        <Binding />
+                        <!-- selected item from ViewModel on the Window DataContext -->
+                        <Binding Path="DataContext.SelectedItem" RelativeSource="{RelativeSource AncestorType=Window}" />
+                    </MultiBinding>
+                </Border.BorderBrush>
+                <Border.BorderThickness>
+                    <MultiBinding Converter="{StaticResource SelectedBorder}">
+                        <Binding />
+                        <Binding Path="DataContext.SelectedItem" RelativeSource="{RelativeSource AncestorType=Window}" />
+                    </MultiBinding>
+                </Border.BorderThickness>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#F6F6F6" CornerRadius="4">
+                        <Grid>
+                            <Image Source="{Binding ImagePath, Converter={StaticResource StringToImage}}" Stretch="UniformToFill" Visibility="{Binding ImagePath, Converter={StaticResource NullToBool}}" />
+
+                            <Grid Visibility="{Binding ImagePath, Converter={StaticResource NullToBool}, ConverterParameter=inverse}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                <Border Background="#F6F6F6" />
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Viewbox Width="36" Height="36">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Fill="#AAA" Data="M4 4h16v12H4z M6 6v8h12V6z" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="No image" Foreground="#999" FontSize="12" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Button Width="40" Height="28" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"
+                                    Style="{StaticResource RunButtonHoverStyle}"
+                                    Command="{Binding DataContext.RunItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}" ToolTip="Run">
+                                <Viewbox Width="14" Height="14">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="#fff" Data="M8 5v14l11-7z" />
+                                    </Canvas>
+                                </Viewbox>
+                                <Button.Background>
+                                    <SolidColorBrush Color="#FF5A99" Opacity="0.95" />
+                                </Button.Background>
+                                <Button.BorderBrush>
+                                    <SolidColorBrush Color="#E0E0E0" />
+                                </Button.BorderBrush>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Row="1" Margin="4,8,4,0">
+                        <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Description}" FontSize="12" Foreground="#666" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" MaxHeight="60" MinHeight="48" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- DataTemplate for AddButtonPlaceholder: render as a Button that calls AddCommand on the Window DataContext -->
+        <DataTemplate x:Key="AddTileTemplate" DataType="local:AddButtonPlaceholder">
+            <Button Command="{Binding DataContext.AddCommand, ElementName=RootWindow}" Width="200" Height="220" Margin="8" Padding="8" Background="#FFF" BorderBrush="#DDD" BorderThickness="1" ToolTip="Add new software">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="+" FontSize="30" HorizontalAlignment="Center" />
+                    <TextBlock Text="Add new software..." FontSize="12" Foreground="#666" HorizontalAlignment="Center" />
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+
+        <vm:ItemTypeTemplateSelector x:Key="ItemSelector"
+                                     SoftwareTemplate="{StaticResource SoftwareTileTemplate}"
+                                     AddTemplate="{StaticResource AddTileTemplate}" />
+
+    </Window.Resources>
+
+    <DockPanel LastChildFill="True">
+        <Menu DockPanel.Dock="Top" Background="Transparent">
+            <MenuItem>
+                <MenuItem.Header>
+                    <Button Click="OpenSettings_Click" ToolTip="Settings" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
+                        <Viewbox Width="16" Height="16">
+                            <Canvas Width="24" Height="24">
+                                <Path Fill="#444" Data="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm7.4 5c-.2-.9-.7-1.7-1.3-2.5l1.6-1.4-1.4-1.6-1.9.6c-.6-.4-1.3-.7-2-.8l-.3-2h-2l-.3 2c-.7.1-1.4.4-2 .8l-1.9-.6L5.3 9l1.6 1.4c-.6.8-1.1 1.6-1.3 2.5L3 14l1.2 1.6 1.9-.6c.6.4 1.3.7 2 .8l.3 2h2l.3-2c.7-.1 1.4-.4 2-.8l1.9.6L19 15l.4-1z" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                </MenuItem.Header>
+            </MenuItem>
+        </Menu>
+
+        <Grid Background="#FAFAFA">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="LeftColumn" Width="360" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left column: tiles -->
+            <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="12" BorderBrush="#E6E6E6" BorderThickness="1">
+                <DockPanel LastChildFill="True">
+                    <TextBlock Text="Software" FontSize="16" FontWeight="SemiBold" DockPanel.Dock="Top" Margin="2" />
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding ViewItems}" ItemTemplateSelector="{StaticResource ItemSelector}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel IsItemsHost="True" Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="HorizontalAlignment" Value="Left" />
+                                    <Setter Property="VerticalAlignment" Value="Top" />
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- Grid splitter -->
+            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#F0F0F0" ShowsPreview="True" DragCompleted="GridSplitter_DragCompleted"/>
+
+            <!-- Right column: details -->
+            <Border Grid.Column="2" Background="White" CornerRadius="8" Padding="16" BorderBrush="#E6E6E6" BorderThickness="1"
+                    Visibility="{Binding SelectedItem, Converter={StaticResource NullToBool}}">
+                <Grid x:Name="DetailsContainer" RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <TranslateTransform x:Name="DetailsTransform" />
+                    </Grid.RenderTransform>
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Header: editable title only -->
+                    <DockPanel Grid.Row="0">
+                        <TextBox Text="{Binding SelectedItem.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" BorderThickness="0" Background="Transparent" IsEnabled="{Binding SelectedItem, Converter={StaticResource NullToBool}}" />
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Vertical" Margin="0">
+                            <!-- Screenshots -->
+                            <GroupBox Header="Screenshot" Padding="8" Margin="0,4,0,4">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <Button Content="Paste from clipboard" Command="{Binding PasteImageCommand}" IsEnabled="{Binding SelectedItem, Converter={StaticResource NullToBool}}" />
+                                        <Button Content="Choose image file" Command="{Binding ChooseImageCommand}" IsEnabled="{Binding SelectedItem, Converter={StaticResource NullToBool}}" Margin="8,0,0,0" />
+                                    </StackPanel>
+                                    <Border Height="160" Margin="0,8,0,0" Background="#F6F6F6">
+                                        <Image Source="{Binding SelectedItem.ImagePath, Converter={StaticResource StringToImage}}" Stretch="Uniform" />
+                                    </Border>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Description and notes -->
+                            <GroupBox Header="Description" Padding="8" Margin="0,4,0,4">
+                                <TextBox Text="{Binding SelectedItem.Description, Mode=TwoWay}" AcceptsReturn="True" Height="60" TextWrapping="Wrap" IsReadOnly="False" />
+                            </GroupBox>
+
+                            <GroupBox Header="Notes" Padding="8" Margin="0,4,0,4">
+                                <TextBox Text="{Binding SelectedItem.Notes, Mode=TwoWay}" AcceptsReturn="True" Height="120" TextWrapping="Wrap" IsReadOnly="False" />
+                            </GroupBox>
+
+                            <!-- Executable -->
+                            <GroupBox Header="Executable" Padding="8" Margin="0,4,0,4">
+                                <StackPanel Orientation="Horizontal" Margin="0">
+                                    <TextBox Text="{Binding SelectedItem.ExecutablePath, Mode=TwoWay}" Width="400" IsReadOnly="False" />
+                                    <Button Content="Choose..." Command="{Binding ChooseExecutableCommand}" Margin="8,0,0,0" />
+                                    <Button Content="Run" Command="{Binding RunExecutableCommand}" Margin="8,0,0,0" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Build and Data folders with backup -->
+                            <GroupBox Header="Build Files (AppData)" Padding="8" Margin="0,4,0,4">
+                                <StackPanel Orientation="Horizontal" Margin="0">
+                                    <TextBox Text="{Binding SelectedItem.BuildFolder, Mode=TwoWay}" Width="400" IsReadOnly="True" />
+                                    <Button Content="Choose..." Command="{Binding ChooseBuildFolderCommand}" Margin="8,0,0,0" />
+                                    <Button Content="Backup now" Command="{Binding BackupAppDataCommand}" Margin="8,0,0,0" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <GroupBox Header="Data Files (UserData)" Padding="8" Margin="0,4,0,4">
+                                <StackPanel Orientation="Horizontal" Margin="0">
+                                    <TextBox Text="{Binding SelectedItem.DataFolder, Mode=TwoWay}" Width="400" IsReadOnly="True" />
+                                    <Button Content="Choose..." Command="{Binding ChooseDataFolderCommand}" Margin="8,0,0,0" />
+                                    <Button Content="Backup now" Command="{Binding BackupUserDataCommand}" Margin="8,0,0,0" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Save/Cancel removed: saving handled on LostFocus and on app exit -->
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>
