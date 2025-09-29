@@ -31,5 +31,19 @@ namespace SoftwareLibrary.Converters
         {
             throw new NotImplementedException();
         }
+
+        // helper to map status string to color
+        public static System.Windows.Media.Color ColorForStatus(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status)) return System.Windows.Media.Colors.Gray;
+            return status switch
+            {
+                "In development" => System.Windows.Media.Color.FromRgb(0xFF, 0xA5, 0x00), // orange
+                "In testing" => System.Windows.Media.Color.FromRgb(0xFF, 0xD7, 0x00), // gold/yellow
+                "Deployed" => System.Windows.Media.Color.FromRgb(0x32, 0xCD, 0x32), // limegreen
+                "Archived" => System.Windows.Media.Color.FromRgb(0x80, 0x80, 0x80), // gray
+                _ => System.Windows.Media.Colors.Gray,
+            };
+        }
     }
 }

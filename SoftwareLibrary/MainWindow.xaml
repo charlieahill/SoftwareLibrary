@@ -57,6 +57,7 @@
         <conv:NullToBoolConverter x:Key="NullToBool" />
         <conv:StringToImageConverter x:Key="StringToImage" />
         <conv:SelectedItemBorderConverter x:Key="SelectedBorder" />
+        <conv:StatusToBrushConverter x:Key="StatusToBrush" />
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
         <Style x:Key="TileStyle" TargetType="Border">
@@ -162,13 +163,20 @@
                                     <SolidColorBrush Color="#E0E0E0" />
                                 </Button.BorderBrush>
                             </Button>
+
                         </Grid>
                     </Border>
 
-                    <StackPanel Grid.Row="1" Margin="4,8,4,0">
+                    <StackPanel Grid.Row="1" Margin="4,8,4,0" Panel.ZIndex="1">
                         <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding Description}" FontSize="12" Foreground="#666" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" MaxHeight="60" MinHeight="48" />
                     </StackPanel>
+
+                    <!-- diagonal status stripe placed at the top-right corner of the tile -->
+                    <Canvas HorizontalAlignment="Right" VerticalAlignment="Top" Width="72" Height="72" IsHitTestVisible="False" Panel.ZIndex="0">
+                        <!-- triangle covering the top-right corner -->
+                        <Path Data="M0,0 L72,0 L72,72 Z" Fill="{Binding Status, Converter={StaticResource StatusToBrush}}" />
+                    </Canvas>
                 </Grid>
             </Border>
         </DataTemplate>
@@ -298,6 +306,15 @@
                                         <Border Height="160" Margin="0,8,0,0" Background="#F6F6F6">
                                             <Image Source="{Binding SelectedItem.ImagePath, Converter={StaticResource StringToImage}}" Stretch="Uniform" />
                                         </Border>
+
+                                        <!-- moved Status combobox directly under the screenshot -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                            <TextBlock Text="Status:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <ComboBox ItemsSource="{Binding DataContext.StatusOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      SelectedItem="{Binding SelectedItem.Status, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEnabled="{Binding SelectedItem, Converter={StaticResource NullToBool}}" Width="160" />
+                                        </StackPanel>
+
                                     </StackPanel>
                                 </GroupBox>
 

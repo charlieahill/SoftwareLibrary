@@ -12,6 +12,7 @@ using SoftwareLibrary.Views;
 using Forms = System.Windows.Forms;
 using Wpf = System.Windows;
 using System.Collections.Specialized;
+using System.Collections.Generic;
 
 namespace SoftwareLibrary.ViewModels
 {
@@ -19,6 +20,15 @@ namespace SoftwareLibrary.ViewModels
     {
         public ObservableCollection<SoftwareItem> Items { get; } = new ObservableCollection<SoftwareItem>();
         public ObservableCollection<object> ViewItems { get; } = new ObservableCollection<object>();
+
+        // expose status options for binding
+        public IEnumerable<string> StatusOptions { get; } = new List<string>
+        {
+            "In development",
+            "In testing",
+            "Deployed",
+            "Archived"
+        };
 
         public int ItemsCount => Items.Count;
 
@@ -28,6 +38,7 @@ namespace SoftwareLibrary.ViewModels
             get => _selectedItem;
             set
             {
+                if (_selectedItem == value) return;
                 _selectedItem = value;
                 OnPropertyChanged(nameof(SelectedItem));
                 // update command states when selection changes
@@ -49,6 +60,8 @@ namespace SoftwareLibrary.ViewModels
         public ICommand ChooseDataFolderCommand { get; }
         public ICommand BackupAppDataCommand { get; }
         public ICommand BackupUserDataCommand { get; }
+        public ICommand OpenBackupAppDataLocationCommand { get; }
+        public ICommand OpenBackupUserDataLocationCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand CancelEditCommand { get; }
         public ICommand ReorderCommand { get; }
@@ -62,7 +75,12 @@ namespace SoftwareLibrary.ViewModels
         {
             _storage = storage;
 
-            foreach (var it in _storage.LoadItems()) Items.Add(it);
+            foreach (var it in _storage.LoadItems())
+            {
+                Items.Add(it);
+                HookItemPropertyChanged(it);
+            }
+
             Items.CollectionChanged += Items_CollectionChanged;
             RebuildViewItems();
 
@@ -77,11 +95,44 @@ namespace SoftwareLibrary.ViewModels
             ChooseDataFolderCommand = new RelayCommand(_ => ChooseDataFolder(), _ => SelectedItem != null);
             OpenBuildFolderLocationCommand = new RelayCommand(_ => OpenFolder(SelectedItem?.BuildFolder), _ => SelectedItem != null && !string.IsNullOrWhiteSpace(SelectedItem?.BuildFolder) && Directory.Exists(SelectedItem?.BuildFolder ?? string.Empty));
             OpenDataFolderLocationCommand = new RelayCommand(_ => OpenFolder(SelectedItem?.DataFolder), _ => SelectedItem != null && !string.IsNullOrWhiteSpace(SelectedItem?.DataFolder) && Directory.Exists(SelectedItem?.DataFolder ?? string.Empty));
+
             BackupAppDataCommand = new RelayCommand(_ => BackupFolder(SelectedItem?.BuildFolder, "AppData"), _ => SelectedItem != null && !string.IsNullOrWhiteSpace(SelectedItem?.BuildFolder));
             BackupUserDataCommand = new RelayCommand(_ => BackupFolder(SelectedItem?.DataFolder, "UserData"), _ => SelectedItem != null && !string.IsNullOrWhiteSpace(SelectedItem?.DataFolder));
+
+            OpenBackupAppDataLocationCommand = new RelayCommand(_ => OpenBackupFolderLocation("AppData"), _ => SelectedItem != null);
+            OpenBackupUserDataLocationCommand = new RelayCommand(_ => OpenBackupFolderLocation("UserData"), _ => SelectedItem != null);
+
             SaveCommand = new RelayCommand(_ => Save(), _ => SelectedItem != null);
             CancelEditCommand = new RelayCommand(_ => CancelEdit(), _ => SelectedItem != null);
             ReorderCommand = new RelayCommand(_ => OpenReorder());
+        }
+
+        private void HookItemPropertyChanged(SoftwareItem item)
+        {
+            if (item is INotifyPropertyChanged npc)
+            {
+                npc.PropertyChanged += Item_PropertyChanged;
+            }
+        }
+
+        private void UnhookItemPropertyChanged(SoftwareItem item)
+        {
+            if (item is INotifyPropertyChanged npc)
+            {
+                npc.PropertyChanged -= Item_PropertyChanged;
+            }
+        }
+
+        private void Item_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            // When any SoftwareItem property changes, reevaluate command CanExecute so buttons enable immediately
+            RaiseCanExecuteChangedForSelection();
+
+            // Also persist changes immediately where appropriate
+            if (e.PropertyName == nameof(SoftwareItem.ImagePath) || e.PropertyName == nameof(SoftwareItem.Title) || e.PropertyName == nameof(SoftwareItem.Description) || e.PropertyName == nameof(SoftwareItem.Notes) || e.PropertyName == nameof(SoftwareItem.ExecutablePath) || e.PropertyName == nameof(SoftwareItem.BuildFolder) || e.PropertyName == nameof(SoftwareItem.DataFolder) || e.PropertyName == nameof(SoftwareItem.Status))
+            {
+                SaveItems();
+            }
         }
 
         private void RebuildViewItems()
@@ -94,7 +145,10 @@ namespace SoftwareLibrary.ViewModels
         private void AddNew()
         {
             var s = new SoftwareItem { Title = "New Software" };
+            // always default new items to In development so they don't inherit UI control state
+            s.Status = "In development";
             Items.Add(s);
+            HookItemPropertyChanged(s);
             RebuildViewItems();
             SelectedItem = s;
             IsReadOnly = false;
@@ -118,6 +172,8 @@ namespace SoftwareLibrary.ViewModels
             (OpenDataFolderLocationCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (BackupAppDataCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (BackupUserDataCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (OpenBackupAppDataLocationCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (OpenBackupUserDataLocationCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (CancelEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
@@ -236,7 +292,14 @@ namespace SoftwareLibrary.ViewModels
                 Directory.CreateDirectory(dest);
                 var name = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 var cloneDest = Path.Combine(dest, name);
-                CopyDirectory(srcFolder, cloneDest);
+
+                var canceled = !CopyDirectory(srcFolder, cloneDest);
+                if (canceled)
+                {
+                    Wpf.MessageBox.Show("Backup canceled by user.");
+                    return;
+                }
+
                 Wpf.MessageBox.Show("Backup completed to: " + cloneDest);
             }
             catch (Exception ex)
@@ -245,7 +308,7 @@ namespace SoftwareLibrary.ViewModels
             }
         }
 
-        private void CopyDirectory(string sourceDir, string destinationDir)
+        private bool CopyDirectory(string sourceDir, string destinationDir)
         {
             var dir = new DirectoryInfo(sourceDir);
             if (!dir.Exists) throw new DirectoryNotFoundException();
@@ -253,18 +316,86 @@ namespace SoftwareLibrary.ViewModels
 
             foreach (var file in dir.GetFiles())
             {
-                file.CopyTo(Path.Combine(destinationDir, file.Name));
+                try
+                {
+                    file.CopyTo(Path.Combine(destinationDir, file.Name));
+                }
+                catch (Exception ex)
+                {
+                    // ask user whether to skip this file or cancel entire backup
+                    var msg = $"Failed to copy file:\n{file.FullName}\n\nError: {ex.Message}\n\nSkip this file? (Yes = Skip, No = Cancel)";
+                    var res = Wpf.MessageBox.Show(msg, "Copy Error", Wpf.MessageBoxButton.YesNo, Wpf.MessageBoxImage.Warning);
+                    if (res == Wpf.MessageBoxResult.Yes)
+                    {
+                        // skip this file and continue
+                        continue;
+                    }
+                    else
+                    {
+                        // user chose to cancel
+                        return false;
+                    }
+                }
             }
 
             foreach (var subDir in dir.GetDirectories())
             {
-                CopyDirectory(subDir.FullName, Path.Combine(destinationDir, subDir.Name));
+                var destSub = Path.Combine(destinationDir, subDir.Name);
+                var cont = true;
+                try
+                {
+                    cont = CopyDirectory(subDir.FullName, destSub);
+                }
+                catch (Exception ex)
+                {
+                    var msg = $"Failed to copy folder:\n{subDir.FullName}\n\nError: {ex.Message}\n\nSkip this folder? (Yes = Skip, No = Cancel)";
+                    var res = Wpf.MessageBox.Show(msg, "Copy Error", Wpf.MessageBoxButton.YesNo, Wpf.MessageBoxImage.Warning);
+                    if (res == Wpf.MessageBoxResult.Yes)
+                    {
+                        cont = true; // skip this folder
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+
+                if (!cont) return false;
+            }
+
+            return true;
+        }
+
+        private void OpenBackupFolderLocation(string type)
+        {
+            if (SelectedItem == null) return;
+            try
+            {
+                var destRoot = _storage.GetBackupBaseFolder(SelectedItem);
+                var dest = Path.Combine(destRoot, type);
+                Directory.CreateDirectory(dest);
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{dest}\"") { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Wpf.MessageBox.Show("Failed to open backup folder: " + ex.Message);
             }
         }
 
+        // Public Save wrapper used by MainWindow
         public void Save()
         {
             SaveItems();
+        }
+
+        private void BackupAppData()
+        {
+            BackupFolder(SelectedItem?.BuildFolder, "AppData");
+        }
+
+        private void BackupUserData()
+        {
+            BackupFolder(SelectedItem?.DataFolder, "UserData");
         }
 
         private void CancelEdit()
@@ -286,6 +417,15 @@ namespace SoftwareLibrary.ViewModels
         private void Items_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged(nameof(ItemsCount));
+            // hook/unhook property changed for new/old items so commands update when item fields change
+            if (e.NewItems != null)
+            {
+                foreach (var ni in e.NewItems.OfType<SoftwareItem>()) HookItemPropertyChanged(ni);
+            }
+            if (e.OldItems != null)
+            {
+                foreach (var oi in e.OldItems.OfType<SoftwareItem>()) UnhookItemPropertyChanged(oi);
+            }
             RebuildViewItems();
         }
 
