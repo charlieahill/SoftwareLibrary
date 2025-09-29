@@ -1,8 +1,8 @@
 <UserControl x:Class="SoftwareLibrary.Views.AddTile"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Height="150" Width="200">
-    <Border x:Name="RootBorderInternal" Background="#FFF" BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Padding="8" Margin="8" Cursor="Hand">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Allow parent panel to size the control; make root Border stretch to fill the container -->
+    <Border x:Name="RootBorderInternal" Style="{DynamicResource TileStyle}" Cursor="Hand" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
             <TextBlock Text="+" FontSize="30" HorizontalAlignment="Center" />
             <TextBlock Text="Add new software..." FontSize="12" Foreground="#666" HorizontalAlignment="Center" />

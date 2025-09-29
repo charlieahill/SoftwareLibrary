@@ -52,6 +52,9 @@ namespace SoftwareLibrary.ViewModels
         public ICommand SaveCommand { get; }
         public ICommand CancelEditCommand { get; }
         public ICommand ReorderCommand { get; }
+        public ICommand OpenExecutableLocationCommand { get; }
+        public ICommand OpenBuildFolderLocationCommand { get; }
+        public ICommand OpenDataFolderLocationCommand { get; }
 
         public MainViewModel() : this(new StorageService()) { }
 
@@ -68,9 +71,12 @@ namespace SoftwareLibrary.ViewModels
             ChooseImageCommand = new RelayCommand(_ => ChooseImage(), _ => SelectedItem != null);
             ChooseExecutableCommand = new RelayCommand(_ => ChooseExecutable(), _ => SelectedItem != null);
             RunExecutableCommand = new RelayCommand(_ => RunExecutable(), _ => SelectedItem != null && !string.IsNullOrWhiteSpace(SelectedItem?.ExecutablePath));
+            OpenExecutableLocationCommand = new RelayCommand(_ => OpenExecutableLocation(), _ => SelectedItem != null && !string.IsNullOrWhiteSpace(SelectedItem?.ExecutablePath));
             RunItemCommand = new RelayCommand(p => RunItem(p), p => p is SoftwareItem si && !string.IsNullOrWhiteSpace(si.ExecutablePath));
             ChooseBuildFolderCommand = new RelayCommand(_ => ChooseBuildFolder(), _ => SelectedItem != null);
             ChooseDataFolderCommand = new RelayCommand(_ => ChooseDataFolder(), _ => SelectedItem != null);
+            OpenBuildFolderLocationCommand = new RelayCommand(_ => OpenFolder(SelectedItem?.BuildFolder), _ => SelectedItem != null && !string.IsNullOrWhiteSpace(SelectedItem?.BuildFolder) && Directory.Exists(SelectedItem?.BuildFolder ?? string.Empty));
+            OpenDataFolderLocationCommand = new RelayCommand(_ => OpenFolder(SelectedItem?.DataFolder), _ => SelectedItem != null && !string.IsNullOrWhiteSpace(SelectedItem?.DataFolder) && Directory.Exists(SelectedItem?.DataFolder ?? string.Empty));
             BackupAppDataCommand = new RelayCommand(_ => BackupFolder(SelectedItem?.BuildFolder, "AppData"), _ => SelectedItem != null && !string.IsNullOrWhiteSpace(SelectedItem?.BuildFolder));
             BackupUserDataCommand = new RelayCommand(_ => BackupFolder(SelectedItem?.DataFolder, "UserData"), _ => SelectedItem != null && !string.IsNullOrWhiteSpace(SelectedItem?.DataFolder));
             SaveCommand = new RelayCommand(_ => Save(), _ => SelectedItem != null);
@@ -104,9 +110,12 @@ namespace SoftwareLibrary.ViewModels
             (ChooseImageCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ChooseExecutableCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (RunExecutableCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (OpenExecutableLocationCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (RunItemCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ChooseBuildFolderCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ChooseDataFolderCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (OpenBuildFolderLocationCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (OpenDataFolderLocationCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (BackupAppDataCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (BackupUserDataCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
@@ -290,6 +299,51 @@ namespace SoftwareLibrary.ViewModels
                 foreach (var it in dialog.Result) Items.Add(it);
                 SaveItems();
                 OnPropertyChanged(nameof(Items));
+            }
+        }
+
+        private void OpenExecutableLocation()
+        {
+            if (SelectedItem == null || string.IsNullOrWhiteSpace(SelectedItem.ExecutablePath)) return;
+            try
+            {
+                var path = SelectedItem.ExecutablePath;
+                if (File.Exists(path))
+                {
+                    Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+                }
+                else if (Directory.Exists(path))
+                {
+                    Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
+                }
+                else
+                {
+                    Wpf.MessageBox.Show("Path does not exist: " + path);
+                }
+            }
+            catch (Exception ex)
+            {
+                Wpf.MessageBox.Show("Failed to open location: " + ex.Message);
+            }
+        }
+
+        private void OpenFolder(string? folder)
+        {
+            if (string.IsNullOrWhiteSpace(folder)) return;
+            try
+            {
+                if (Directory.Exists(folder))
+                {
+                    Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
+                }
+                else
+                {
+                    Wpf.MessageBox.Show("Folder does not exist: " + folder);
+                }
+            }
+            catch (Exception ex)
+            {
+                Wpf.MessageBox.Show("Failed to open folder: " + ex.Message);
             }
         }
 

@@ -7,10 +7,53 @@
         xmlns:local="clr-namespace:SoftwareLibrary"
         xmlns:vm="clr-namespace:SoftwareLibrary.ViewModels"
         xmlns:conv="clr-namespace:SoftwareLibrary.Converters"
+        xmlns:views="clr-namespace:SoftwareLibrary.Views"
         mc:Ignorable="d"
         Title="Software Library" Height="900" Width="1400" MinWidth="1200" MinHeight="720">
 
     <Window.Resources>
+        <!-- add vector app icon -->
+        <DrawingImage x:Key="AppIcon">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <!-- background rounded square -->
+                    <GeometryDrawing Brush="#FF1E90FF">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="0,0,100,100" RadiusX="18" RadiusY="18" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+
+                    <!-- subtle highlight top-left -->
+                    <GeometryDrawing Brush="#33FFFFFF">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="6,6,60,24" RadiusX="10" RadiusY="10" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+
+                    <!-- white app window shape -->
+                    <GeometryDrawing Brush="White">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="16,26,68,48" RadiusX="6" RadiusY="6" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+
+                    <!-- small header bar inside window -->
+                    <GeometryDrawing Brush="#F3F3F3">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="20,30,60,10" RadiusX="3" RadiusY="3" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+
+                    <!-- play/run triangle centered in window -->
+                    <GeometryDrawing Brush="#FF1E90FF">
+                        <GeometryDrawing.Geometry>
+                            <PathGeometry Figures="M44,44 L66,52 L44,60 Z" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
         <conv:NullToBoolConverter x:Key="NullToBool" />
         <conv:StringToImageConverter x:Key="StringToImage" />
         <conv:SelectedItemBorderConverter x:Key="SelectedBorder" />
@@ -19,7 +62,6 @@
         <Style x:Key="TileStyle" TargetType="Border">
             <Setter Property="Width" Value="200"/>
             <Setter Property="Height" Value="220"/>
-            <Setter Property="Margin" Value="8"/>
             <Setter Property="Padding" Value="8"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Background" Value="#FFF"/>
@@ -66,7 +108,7 @@
 
         <!-- DataTemplate for SoftwareItem -->
         <DataTemplate x:Key="SoftwareTileTemplate" DataType="local:SoftwareItem">
-            <Border Style="{StaticResource TileStyle}" Cursor="Hand" ToolTip="{Binding Title}" MouseLeftButtonDown="Tile_MouseDown">
+            <Border Style="{StaticResource TileStyle}" Cursor="Hand" ToolTip="{Binding Title}">
                 <Border.BorderBrush>
                     <MultiBinding Converter="{StaticResource SelectedBorder}">
                         <!-- current item -->
@@ -133,12 +175,8 @@
 
         <!-- DataTemplate for AddButtonPlaceholder: render as a Button that calls AddCommand on the Window DataContext -->
         <DataTemplate x:Key="AddTileTemplate" DataType="local:AddButtonPlaceholder">
-            <Button Command="{Binding DataContext.AddCommand, ElementName=RootWindow}" Width="200" Height="220" Margin="8" Padding="8" Background="#FFF" BorderBrush="#DDD" BorderThickness="1" ToolTip="Add new software">
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="+" FontSize="30" HorizontalAlignment="Center" />
-                    <TextBlock Text="Add new software..." FontSize="12" Foreground="#666" HorizontalAlignment="Center" />
-                </StackPanel>
-            </Button>
+            <!-- Use the AddTile user control (handles clicks) -->
+            <views:AddTile Command="{Binding DataContext.AddCommand, RelativeSource={RelativeSource AncestorType=Window}}" Width="200" Height="220" />
         </DataTemplate>
 
         <vm:ItemTypeTemplateSelector x:Key="ItemSelector"
@@ -147,128 +185,190 @@
 
     </Window.Resources>
 
-    <DockPanel LastChildFill="True">
-        <Menu DockPanel.Dock="Top" Background="Transparent">
-            <MenuItem>
-                <MenuItem.Header>
-                    <Button Click="OpenSettings_Click" ToolTip="Settings" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
-                        <Viewbox Width="16" Height="16">
-                            <Canvas Width="24" Height="24">
-                                <Path Fill="#444" Data="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm7.4 5c-.2-.9-.7-1.7-1.3-2.5l1.6-1.4-1.4-1.6-1.9.6c-.6-.4-1.3-.7-2-.8l-.3-2h-2l-.3 2c-.7.1-1.4.4-2 .8l-1.9-.6L5.3 9l1.6 1.4c-.6.8-1.1 1.6-1.3 2.5L3 14l1.2 1.6 1.9-.6c.6.4 1.3.7 2 .8l.3 2h2l.3-2c.7-.1 1.4-.4 2-.8l1.9.6L19 15l.4-1z" />
-                            </Canvas>
-                        </Viewbox>
-                    </Button>
-                </MenuItem.Header>
-            </MenuItem>
-        </Menu>
+    <!-- use the vector image as the Window icon -->
+    <Window.Icon>
+        <StaticResource ResourceKey="AppIcon" />
+    </Window.Icon>
 
-        <Grid Background="#FAFAFA">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="LeftColumn" Width="360" />
-                <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+    <AdornerDecorator x:Name="RootAdorner">
+        <DockPanel LastChildFill="True">
+            <Menu DockPanel.Dock="Top" Background="Transparent">
+                <MenuItem>
+                    <MenuItem.Header>
+                        <Button Click="OpenSettings_Click" ToolTip="Settings" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}">
+                            <Viewbox Width="16" Height="16">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#444" Data="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm7.4 5c-.2-.9-.7-1.7-1.3-2.5l1.6-1.4-1.4-1.6-1.9.6c-.6-.4-1.3-.7-2-.8l-.3-2h-2l-.3 2c-.7.1-1.4.4-2 .8l-1.9-.6L5.3 9l1.6 1.4c-.6.8-1.1 1.6-1.3 2.5L3 14l1.2 1.6 1.9-.6c.6.4 1.3.7 2 .8l.3 2h2l.3-2c.7-.1 1.4-.4 2-.8l1.9.6L19 15l.4-1z" />
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+                    </MenuItem.Header>
+                </MenuItem>
+            </Menu>
 
-            <!-- Left column: tiles -->
-            <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="12" BorderBrush="#E6E6E6" BorderThickness="1">
-                <DockPanel LastChildFill="True">
-                    <TextBlock Text="Software" FontSize="16" FontWeight="SemiBold" DockPanel.Dock="Top" Margin="2" />
+            <Grid Background="#FAFAFA">
+                <Grid.ColumnDefinitions>
+                    <!-- slightly narrower left column to give more room to details by default -->
+                    <ColumnDefinition x:Name="LeftColumn" Width="320" MinWidth="280" />
+                    <ColumnDefinition Width="6" />
+                    <!-- details column: allow flexible width but keep a larger minimum to accommodate buttons -->
+                    <ColumnDefinition Width="*" MinWidth="600" />
+                </Grid.ColumnDefinitions>
 
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding ViewItems}" ItemTemplateSelector="{StaticResource ItemSelector}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel IsItemsHost="True" Orientation="Horizontal" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemContainerStyle>
-                                <Style TargetType="ContentPresenter">
-                                    <Setter Property="HorizontalAlignment" Value="Left" />
-                                    <Setter Property="VerticalAlignment" Value="Top" />
-                                </Style>
-                            </ItemsControl.ItemContainerStyle>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </DockPanel>
-            </Border>
+                <!-- Left column: tiles -->
+                <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="12" BorderBrush="#E6E6E6" BorderThickness="1">
+                    <DockPanel LastChildFill="True">
+                        <TextBlock Text="Software" FontSize="16" FontWeight="SemiBold" DockPanel.Dock="Top" Margin="2" />
 
-            <!-- Grid splitter -->
-            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#F0F0F0" ShowsPreview="True" DragCompleted="GridSplitter_DragCompleted"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding ViewItems}" ItemTemplateSelector="{StaticResource ItemSelector}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel IsItemsHost="True" Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
 
-            <!-- Right column: details -->
-            <Border Grid.Column="2" Background="White" CornerRadius="8" Padding="16" BorderBrush="#E6E6E6" BorderThickness="1"
-                    Visibility="{Binding SelectedItem, Converter={StaticResource NullToBool}}">
-                <Grid x:Name="DetailsContainer" RenderTransformOrigin="0.5,0.5">
-                    <Grid.RenderTransform>
-                        <TranslateTransform x:Name="DetailsTransform" />
-                    </Grid.RenderTransform>
+                                <ItemsControl.ItemContainerStyle>
+                                    <Style TargetType="ContentPresenter">
+                                        <Setter Property="HorizontalAlignment" Value="Left" />
+                                        <Setter Property="VerticalAlignment" Value="Top" />
+                                        <Setter Property="Margin" Value="8" />
+                                        <Setter Property="AllowDrop" Value="True" />
+                                        <!-- wire drag/select handlers to the ContentPresenter so the template visuals don't intercept clicks -->
+                                        <EventSetter Event="PreviewMouseLeftButtonDown" Handler="Tile_PreviewMouseLeftButtonDown" />
+                                        <EventSetter Event="MouseMove" Handler="Tile_MouseMove" />
+                                        <!-- use MouseLeftButtonUp for selection so inner Buttons receive Click first -->
+                                        <EventSetter Event="MouseLeftButtonUp" Handler="Tile_MouseLeftButtonUp" />
+                                        <EventSetter Event="DragOver" Handler="Tile_DragOver" />
+                                        <EventSetter Event="Drop" Handler="Tile_Drop" />
+                                    </Style>
+                                </ItemsControl.ItemContainerStyle>
+                            </ItemsControl>
+                        </ScrollViewer>
+                     </DockPanel>
+                 </Border>
 
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
+                <!-- Grid splitter -->
+                <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#F0F0F0" ShowsPreview="True" DragCompleted="GridSplitter_DragCompleted"/>
 
-                    <!-- Header: editable title only -->
-                    <DockPanel Grid.Row="0">
-                        <TextBox Text="{Binding SelectedItem.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" BorderThickness="0" Background="Transparent" IsEnabled="{Binding SelectedItem, Converter={StaticResource NullToBool}}" />
-                    </DockPanel>
+                <!-- Right column: details -->
+                <Border Grid.Column="2" Background="White" CornerRadius="8" Padding="16" BorderBrush="#E6E6E6" BorderThickness="1" Visibility="{Binding SelectedItem, Converter={StaticResource NullToBool}}" MinWidth="560">
+                    <Grid x:Name="DetailsContainer" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <TranslateTransform x:Name="DetailsTransform" />
+                        </Grid.RenderTransform>
 
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Orientation="Vertical" Margin="0">
-                            <!-- Screenshots -->
-                            <GroupBox Header="Screenshot" Padding="8" Margin="0,4,0,4">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                        <Button Content="Paste from clipboard" Command="{Binding PasteImageCommand}" IsEnabled="{Binding SelectedItem, Converter={StaticResource NullToBool}}" />
-                                        <Button Content="Choose image file" Command="{Binding ChooseImageCommand}" IsEnabled="{Binding SelectedItem, Converter={StaticResource NullToBool}}" Margin="8,0,0,0" />
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!-- pop-out send-to-position icon placed over top-right of details -->
+                        <Button x:Name="SendToPositionPopout" Width="36" Height="36" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Margin="0,-18,-18,0" Click="SendToPosition_Click" ToolTip="Send to tile position..."
+                                Background="White" BorderBrush="#EEE" BorderThickness="1">
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="6" Opacity="0.08" />
+                            </Button.Effect>
+                            <Viewbox Width="14" Height="14">
+                                <Canvas Width="24" Height="24">
+                                    <Path Fill="#444" Data="M6,4 L18,12 L6,20 z" />
+                                </Canvas>
+                            </Viewbox>
+                        </Button>
+
+                        <!-- Header with editable title -->
+                        <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                            <TextBox Text="{Binding SelectedItem.Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"
+                                     BorderThickness="0" Background="Transparent" IsEnabled="{Binding SelectedItem, Converter={StaticResource NullToBool}}" />
+                        </DockPanel>
+
+                        <!-- Details content -->
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Orientation="Vertical" Margin="0">
+
+                                <!-- Screenshots -->
+                                <GroupBox Header="Screenshot" Padding="8" Margin="0,4,0,4">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                            <Button Content="Paste from clipboard" Command="{Binding PasteImageCommand}" IsEnabled="{Binding SelectedItem, Converter={StaticResource NullToBool}}" />
+                                            <Button Content="Choose image file" Command="{Binding ChooseImageCommand}" IsEnabled="{Binding SelectedItem, Converter={StaticResource NullToBool}}" Margin="8,0,0,0" />
+                                        </StackPanel>
+                                        <Border Height="160" Margin="0,8,0,0" Background="#F6F6F6">
+                                            <Image Source="{Binding SelectedItem.ImagePath, Converter={StaticResource StringToImage}}" Stretch="Uniform" />
+                                        </Border>
                                     </StackPanel>
-                                    <Border Height="160" Margin="0,8,0,0" Background="#F6F6F6">
-                                        <Image Source="{Binding SelectedItem.ImagePath, Converter={StaticResource StringToImage}}" Stretch="Uniform" />
-                                    </Border>
-                                </StackPanel>
-                            </GroupBox>
+                                </GroupBox>
 
-                            <!-- Description and notes -->
-                            <GroupBox Header="Description" Padding="8" Margin="0,4,0,4">
-                                <TextBox Text="{Binding SelectedItem.Description, Mode=TwoWay}" AcceptsReturn="True" Height="60" TextWrapping="Wrap" IsReadOnly="False" />
-                            </GroupBox>
+                                <!-- Description and notes -->
+                                <GroupBox Header="Description" Padding="8" Margin="0,4,0,4">
+                                    <TextBox Text="{Binding SelectedItem.Description, Mode=TwoWay}" AcceptsReturn="True" Height="60" TextWrapping="Wrap" />
+                                </GroupBox>
 
-                            <GroupBox Header="Notes" Padding="8" Margin="0,4,0,4">
-                                <TextBox Text="{Binding SelectedItem.Notes, Mode=TwoWay}" AcceptsReturn="True" Height="120" TextWrapping="Wrap" IsReadOnly="False" />
-                            </GroupBox>
+                                <GroupBox Header="Notes" Padding="8" Margin="0,4,0,4">
+                                    <TextBox Text="{Binding SelectedItem.Notes, Mode=TwoWay}" AcceptsReturn="True" Height="120" TextWrapping="Wrap" />
+                                </GroupBox>
 
-                            <!-- Executable -->
-                            <GroupBox Header="Executable" Padding="8" Margin="0,4,0,4">
-                                <StackPanel Orientation="Horizontal" Margin="0">
-                                    <TextBox Text="{Binding SelectedItem.ExecutablePath, Mode=TwoWay}" Width="400" IsReadOnly="False" />
-                                    <Button Content="Choose..." Command="{Binding ChooseExecutableCommand}" Margin="8,0,0,0" />
-                                    <Button Content="Run" Command="{Binding RunExecutableCommand}" Margin="8,0,0,0" />
-                                </StackPanel>
-                            </GroupBox>
+                                <!-- Executable -->
+                                <GroupBox Header="Executable" Padding="8" Margin="0,4,0,4">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
 
-                            <!-- Build and Data folders with backup -->
-                            <GroupBox Header="Build Files (AppData)" Padding="8" Margin="0,4,0,4">
-                                <StackPanel Orientation="Horizontal" Margin="0">
-                                    <TextBox Text="{Binding SelectedItem.BuildFolder, Mode=TwoWay}" Width="400" IsReadOnly="True" />
-                                    <Button Content="Choose..." Command="{Binding ChooseBuildFolderCommand}" Margin="8,0,0,0" />
-                                    <Button Content="Backup now" Command="{Binding BackupAppDataCommand}" Margin="8,0,0,0" />
-                                </StackPanel>
-                            </GroupBox>
+                                        <TextBox Grid.Column="0" Text="{Binding SelectedItem.ExecutablePath, Mode=TwoWay}" Margin="0" />
 
-                            <GroupBox Header="Data Files (UserData)" Padding="8" Margin="0,4,0,4">
-                                <StackPanel Orientation="Horizontal" Margin="0">
-                                    <TextBox Text="{Binding SelectedItem.DataFolder, Mode=TwoWay}" Width="400" IsReadOnly="True" />
-                                    <Button Content="Choose..." Command="{Binding ChooseDataFolderCommand}" Margin="8,0,0,0" />
-                                    <Button Content="Backup now" Command="{Binding BackupUserDataCommand}" Margin="8,0,0,0" />
-                                </StackPanel>
-                            </GroupBox>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,0,0,0">
+                                            <Button Content="Choose..." Command="{Binding ChooseExecutableCommand}" Margin="0,0,8,0" />
+                                            <Button Content="Run" Command="{Binding RunExecutableCommand}" Margin="0,0,8,0" />
+                                            <Button Content="Open file location" Command="{Binding OpenExecutableLocationCommand}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </GroupBox>
 
-                            <!-- Save/Cancel removed: saving handled on LostFocus and on app exit -->
+                                <!-- Build and Data folders with backup -->
+                                <GroupBox Header="Build Files (AppData)" Padding="8" Margin="0,4,0,4">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
 
-                        </StackPanel>
-                    </ScrollViewer>
-                </Grid>
-            </Border>
-        </Grid>
-    </DockPanel>
+                                        <TextBox Grid.Column="0" Text="{Binding SelectedItem.BuildFolder, Mode=TwoWay}" Margin="0" IsReadOnly="True" />
+
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,0,0,0">
+                                            <Button Content="Choose..." Command="{Binding ChooseBuildFolderCommand}" Margin="0,0,8,0" />
+                                            <Button Content="Backup now" Command="{Binding BackupAppDataCommand}" Margin="0,0,8,0" />
+                                            <Button Content="Open file location" Command="{Binding OpenBuildFolderLocationCommand}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </GroupBox>
+
+                                <GroupBox Header="Data Files (UserData)" Padding="8" Margin="0,4,0,4">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBox Grid.Column="0" Text="{Binding SelectedItem.DataFolder, Mode=TwoWay}" Margin="0" IsReadOnly="True" />
+
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,0,0,0">
+                                            <Button Content="Choose..." Command="{Binding ChooseDataFolderCommand}" Margin="0,0,8,0" />
+                                            <Button Content="Backup now" Command="{Binding BackupUserDataCommand}" Margin="0,0,8,0" />
+                                            <Button Content="Open file location" Command="{Binding OpenDataFolderLocationCommand}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </GroupBox>
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+            </Grid>
+        </DockPanel>
+    </AdornerDecorator>
 </Window>
