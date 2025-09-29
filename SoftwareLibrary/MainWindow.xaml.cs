@@ -511,5 +511,71 @@ namespace SoftwareLibrary
                 dep = VisualTreeHelper.GetParent(dep);
             }
         }
+
+        private void RunTile_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var btn = sender as System.Windows.Controls.Button;
+
+                // Defer running until after the input event processing completes so mouse/drag logic doesn't interfere
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    SoftwareItem? item = null;
+
+                    // try CommandParameter first
+                    if (btn != null && btn.CommandParameter is SoftwareItem cp)
+                    {
+                        item = cp;
+                    }
+
+                    // fallback to DataContext
+                    if (item == null && btn != null && btn.DataContext is SoftwareItem dc)
+                    {
+                        item = dc;
+                    }
+
+                    if (item == null)
+                    {
+                        System.Windows.MessageBox.Show("Unable to determine item to run.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    var vm = DataContext as SoftwareLibrary.ViewModels.MainViewModel;
+                    if (vm == null)
+                    {
+                        System.Windows.MessageBox.Show("ViewModel not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    // Prefer invoking the command on the view model if available
+                    if (vm.RunItemCommand != null && vm.RunItemCommand.CanExecute(item))
+                    {
+                        vm.RunItemCommand.Execute(item);
+                        return;
+                    }
+
+                    // fallback: directly start process using the item's ExecutablePath
+                    if (string.IsNullOrWhiteSpace(item.ExecutablePath))
+                    {
+                        System.Windows.MessageBox.Show("No executable configured for this item.", "Error", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+
+                    try
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(item.ExecutablePath) { UseShellExecute = true });
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Windows.MessageBox.Show("Failed to start process: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Background);
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show("Run handler failed: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }

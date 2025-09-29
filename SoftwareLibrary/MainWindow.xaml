@@ -149,8 +149,12 @@
 
                             <Button Width="40" Height="28" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"
                                     Style="{StaticResource RunButtonHoverStyle}"
-                                    Command="{Binding DataContext.RunItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    CommandParameter="{Binding}" ToolTip="Run">
+                                    Command="{Binding DataContext.RunItemCommand, ElementName=RootWindow}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip="Run"
+                                    IsEnabled="True"
+                                    PreviewMouseLeftButtonDown="RunTile_Click"
+                                    Click="RunTile_Click">
                                 <Viewbox Width="14" Height="14">
                                     <Canvas Width="24" Height="24">
                                         <Path Fill="#fff" Data="M8 5v14l11-7z" />
