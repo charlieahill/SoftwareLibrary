@@ -30,6 +30,12 @@ namespace SoftwareLibrary
         private DragAdorner? _dragAdorner;
         private ContentPresenter? _currentDropTargetPresenter;
 
+        // Maintain ratio between left and right columns
+        private double _leftRightRatio = 0; // left / (left + right)
+        private bool _isApplyingRatio = false;
+        private bool _isDraggingSplitter = false;
+        private double _lastAppliedWindowWidth = 0;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -96,6 +102,80 @@ namespace SoftwareLibrary
             this.SizeChanged += MainWindow_SizeOrLocationChanged;
             this.LocationChanged += MainWindow_SizeOrLocationChanged;
             this.StateChanged += MainWindow_StateChanged;
+
+            // Maintain ratio during layout changes
+            this.Loaded += MainWindow_Loaded;
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Compute initial ratio from actual measured sizes
+            UpdateRatioFromActuals();
+            _lastAppliedWindowWidth = this.ActualWidth;
+        }
+
+        private void UpdateRatioFromActuals()
+        {
+            try
+            {
+                double left = LeftColumn.ActualWidth;
+                double right = RightColumn.ActualWidth;
+                if (left > 0 && right > 0)
+                {
+                    double total = left + right; // exclude splitter width
+                    var r = left / total;
+                    // clamp to reasonable bounds
+                    if (r < 0.05) r = 0.05;
+                    if (r > 0.95) r = 0.95;
+                    _leftRightRatio = r;
+                }
+                else if (_leftRightRatio <= 0)
+                {
+                    // Fallback default if not measurable yet
+                    _leftRightRatio = 0.35;
+                }
+            }
+            catch { }
+        }
+
+        private void ApplyRatioToColumns()
+        {
+            if (_isApplyingRatio) return;
+            try
+            {
+                double gridWidth = MainGrid.ActualWidth;
+                double splitter = SplitterColumn.ActualWidth;
+                if (double.IsNaN(gridWidth) || gridWidth <= 0) return;
+                double available = gridWidth - splitter;
+                if (available <= 0) return;
+
+                double minLeft = LeftColumn.MinWidth;
+                double minRight = RightColumn.MinWidth;
+
+                // Clamp ratio so both sides can satisfy MinWidth
+                double minRatioLeft = available > 0 ? minLeft / available : 0.0;
+                double minRatioRight = available > 0 ? minRight / available : 0.0;
+
+                // Ensure both min constraints are respected
+                double r = _leftRightRatio;
+                if (r < minRatioLeft) r = minRatioLeft;
+                if ((1.0 - r) < minRatioRight) r = 1.0 - minRatioRight;
+                if (r < 0.05) r = 0.05;
+                if (r > 0.95) r = 0.95;
+
+                _isApplyingRatio = true;
+                // Use star sizing for both columns so they resize proportionally
+                LeftColumn.Width = new GridLength(r, GridUnitType.Star);
+                RightColumn.Width = new GridLength(1.0 - r, GridUnitType.Star);
+                _isApplyingRatio = false;
+
+                // Save the clamped ratio back so future resizes use it
+                _leftRightRatio = r;
+            }
+            catch
+            {
+                _isApplyingRatio = false;
+            }
         }
 
         private bool IsVisibleOnAnyScreen(double left, double top, double width, double height)
@@ -223,12 +303,28 @@ namespace SoftwareLibrary
             return null;
         }
 
+        private void GridSplitter_DragStarted(object sender, DragStartedEventArgs e)
+        {
+            _isDraggingSplitter = true;
+        }
+
+        private void GridSplitter_DragDelta(object sender, DragDeltaEventArgs e)
+        {
+            // Continuously update ratio while dragging so the next resize uses the latest split
+            UpdateRatioFromActuals();
+        }
+
         private void GridSplitter_DragCompleted(object sender, DragCompletedEventArgs e)
         {
             try
             {
+                _isDraggingSplitter = false;
+
+                // Update ratio immediately to capture final position
+                UpdateRatioFromActuals();
+
+                // Persist current left width
                 var settings = _storage.LoadSettings();
-                // Use ActualWidth which reflects the rendered size and is always a finite number
                 var leftWidth = LeftColumn.ActualWidth;
                 if (double.IsNaN(leftWidth) || leftWidth <= 0) leftWidth = LeftColumn.Width.Value;
                 if (!double.IsNaN(leftWidth) && leftWidth > 0)
@@ -252,6 +348,8 @@ namespace SoftwareLibrary
                 if (settings.LeftColumnWidth > 0)
                 {
                     LeftColumn.Width = new GridLength(settings.LeftColumnWidth);
+                    // Recompute ratio from this explicit size
+                    Dispatcher.BeginInvoke(new Action(UpdateRatioFromActuals));
                 }
 
                 if (settings.IsMaximized)
@@ -431,6 +529,12 @@ namespace SoftwareLibrary
                     settings.WindowHeight = this.ActualHeight;
                 }
                 _storage.SaveSettings(settings);
+
+                // When toggling maximize/restore, apply the current ratio to keep layout consistent
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    ApplyRatioToColumns();
+                }));
             }
             catch
             {
@@ -442,13 +546,25 @@ namespace SoftwareLibrary
         {
             try
             {
-                if (this.WindowState == WindowState.Maximized) return;
-                var settings = _storage.LoadSettings();
-                settings.WindowLeft = this.Left;
-                settings.WindowTop = this.Top;
-                settings.WindowWidth = this.ActualWidth;
-                settings.WindowHeight = this.ActualHeight;
-                _storage.SaveSettings(settings);
+                bool isMaximized = this.WindowState == WindowState.Maximized;
+
+                // Persist bounds only when not maximized
+                if (!isMaximized)
+                {
+                    var settings = _storage.LoadSettings();
+                    settings.WindowLeft = this.Left;
+                    settings.WindowTop = this.Top;
+                    settings.WindowWidth = this.ActualWidth;
+                    settings.WindowHeight = this.ActualHeight;
+                    _storage.SaveSettings(settings);
+                }
+
+                // Maintain ratio on any window width changes (including maximize/restore), but not during splitter drag
+                if (!_isDraggingSplitter && Math.Abs(this.ActualWidth - _lastAppliedWindowWidth) > 0.1)
+                {
+                    _lastAppliedWindowWidth = this.ActualWidth;
+                    ApplyRatioToColumns();
+                }
             }
             catch
             {
@@ -575,6 +691,20 @@ namespace SoftwareLibrary
             catch (Exception ex)
             {
                 System.Windows.MessageBox.Show("Run handler failed: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ClearSearch_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _vm.SearchText = string.Empty;
+                // refocus search box for quick typing
+                SearchBox.Focus();
+            }
+            catch
+            {
+                // ignore
             }
         }
     }

@@ -46,6 +46,20 @@ namespace SoftwareLibrary.ViewModels
             }
         }
 
+        // Search text used to filter visible items
+        private string _searchText = string.Empty;
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                if (_searchText == value) return;
+                _searchText = value ?? string.Empty;
+                OnPropertyChanged(nameof(SearchText));
+                RebuildViewItems();
+            }
+        }
+
         public bool IsReadOnly { get; private set; } = false;
 
         private readonly StorageService _storage;
@@ -138,7 +152,24 @@ namespace SoftwareLibrary.ViewModels
         private void RebuildViewItems()
         {
             ViewItems.Clear();
-            foreach (var it in Items) ViewItems.Add(it);
+
+            var filter = (SearchText ?? string.Empty).Trim();
+            IEnumerable<SoftwareItem> source = Items;
+            if (!string.IsNullOrEmpty(filter))
+            {
+                source = Items.Where(it =>
+                    (!string.IsNullOrEmpty(it.Title) && it.Title.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (!string.IsNullOrEmpty(it.Description) && it.Description.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (!string.IsNullOrEmpty(it.Notes) && it.Notes.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (!string.IsNullOrEmpty(it.ExecutablePath) && it.ExecutablePath.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
+                );
+            }
+
+            foreach (var it in source)
+            {
+                ViewItems.Add(it);
+            }
+            // keep Add button visible even when filtering
             ViewItems.Add(new AddButtonPlaceholder());
         }
 

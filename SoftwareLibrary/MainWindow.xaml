@@ -218,19 +218,53 @@
                 </MenuItem>
             </Menu>
 
-            <Grid Background="#FAFAFA">
+            <Grid x:Name="MainGrid" Background="#FAFAFA">
                 <Grid.ColumnDefinitions>
                     <!-- slightly narrower left column to give more room to details by default -->
                     <ColumnDefinition x:Name="LeftColumn" Width="320" MinWidth="280" />
-                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition x:Name="SplitterColumn" Width="6" />
                     <!-- details column: allow flexible width but keep a larger minimum to accommodate buttons -->
-                    <ColumnDefinition Width="*" MinWidth="600" />
+                    <ColumnDefinition x:Name="RightColumn" Width="*" MinWidth="600" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Left column: tiles -->
                 <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="12" BorderBrush="#E6E6E6" BorderThickness="1">
                     <DockPanel LastChildFill="True">
                         <TextBlock Text="Software" FontSize="16" FontWeight="SemiBold" DockPanel.Dock="Top" Margin="2" />
+                        
+                        <!-- Search bar -->
+                        <Border DockPanel.Dock="Top" CornerRadius="6" BorderBrush="#E6E6E6" BorderThickness="1" Background="#FBFBFB" Margin="0,8,0,8" Padding="6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Viewbox Width="14" Height="14" Margin="2,0,6,0" VerticalAlignment="Center">
+                                    <Canvas Width="24" Height="24">
+                                        <Path Fill="#777" Data="M15.5,14h-.79l-.28-.27a6.471,6.471 0 0 0 1.48-5.34C15.22,5.01 12.21,2 8.61,2S2,5.01,2,8.39s3.01,6.39,6.61,6.39c1.61,0 3.09-.59 4.23-1.57l.27.28v.79l5,4.99L20.49,19l-4.99-5zm-6.89,0C6.01,14 4,11.99 4,9.5S6.01,5 8.61,5 13.22,7.01 13.22,9.5 11.21,14 8.61,14z" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBox Grid.Column="1"
+                                         x:Name="SearchBox"
+                                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         BorderThickness="0" Background="Transparent"
+                                         FontSize="13"
+                                         VerticalContentAlignment="Center"
+                                         ToolTip="Search software by title, description, notes, or path"/>
+                                <!-- Clear button shows only when there is text -->
+                                <Button Grid.Column="2" Width="22" Height="22" Margin="6,0,0,0" VerticalAlignment="Center"
+                                        Background="Transparent" BorderBrush="Transparent"
+                                        ToolTip="Clear" Visibility="{Binding SearchText, Converter={StaticResource NullToBool}}"
+                                        Click="ClearSearch_Click">
+                                    <Viewbox Width="10" Height="10">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Fill="#777" Data="M18.3,5.71L12,12.01l6.3,6.29-1.29,1.29L10.71,13.3 4.41,19.59 3.12,18.3 9.41,12.01 3.12,5.71 4.41,4.42 10.71,10.71 17,4.42z"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                </Button>
+                            </Grid>
+                        </Border>
 
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding ViewItems}" ItemTemplateSelector="{StaticResource ItemSelector}">
@@ -260,8 +294,15 @@
                      </DockPanel>
                  </Border>
 
-                <!-- Grid splitter -->
-                <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#F0F0F0" ShowsPreview="True" DragCompleted="GridSplitter_DragCompleted"/>
+                <!-- Grid splitter (single instance) -->
+                <GridSplitter Grid.Column="1"
+                              Width="6"
+                              HorizontalAlignment="Stretch"
+                              Background="#F0F0F0"
+                              ShowsPreview="False"
+                              DragStarted="GridSplitter_DragStarted"
+                              DragDelta="GridSplitter_DragDelta"
+                              DragCompleted="GridSplitter_DragCompleted"/>
 
                 <!-- Right column: details -->
                 <Border Grid.Column="2" Background="White" CornerRadius="8" Padding="16" BorderBrush="#E6E6E6" BorderThickness="1" Visibility="{Binding SelectedItem, Converter={StaticResource NullToBool}}" MinWidth="560">
